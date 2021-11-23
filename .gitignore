@@ -1,0 +1,12 @@
+
+
+
+save/
+
+save2/
+
+temp*.py
+
+test*.ipynb
+
+__pycache__/
