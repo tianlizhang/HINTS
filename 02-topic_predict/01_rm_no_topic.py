@@ -16,7 +16,7 @@ import torch
 import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
-from tqdm import tqdm
+from tqdm import tqdm, trange
 
 from batch_loader import TemporalEdgeCollator, TemporalEdgeDataLoader
 from batch_model import BatchModel
@@ -25,15 +25,15 @@ from util import (CSRA_PATH, DBLP_PATH, NOTE_PATH, EarlyStopMonitor,
                   set_logger, set_random_seed, write_result)
 
 
-def load_data():
-    coauthors = []
-    for year in range(2000, 2004):
-        g_list, _ = dgl.load_graphs(f'../save/coauthor_{year}.graph')
-        g = g_list[0]
-        n_nodes = len(g.nodes())
-        g.ndata['feat'] = torch.rand(n_nodes, 300)
-        coauthors.append(g)
-    return coauthors
+def rm_no_topic(coauthors):
+    out = []
+    for i in trange(len(coauthors)):
+        g = coauthors[i]
+        edge_topic = g.edata['topic']
+        idx = torch.where(edge_topic.sum(1)!=0)[0]
+        new_g = dgl.edge_subgraph(g, idx, preserve_nodes=True)
+        out.append(new_g)
+    return out
 
 
 def calc_pos_weight(coauthors, train_range):
@@ -44,6 +44,7 @@ def calc_pos_weight(coauthors, train_range):
         total += len(topic)
         topic_posnum = topic.sum(0)
         l.append(topic_posnum)
+
     l = torch.vstack(l)
     pos_num = l.sum(0)
     pos_weight = (total-pos_num)/pos_num
@@ -52,6 +53,8 @@ def calc_pos_weight(coauthors, train_range):
 
 def main(args):
     coauthors, _ = dgl.load_graphs(f'../save2/coauthors_topic.graph') #load_data()
+    # print(f'coauthors:{coauthors}')
+    coauthors = rm_no_topic(coauthors)
     # print(f'coauthors:{coauthors}')
     device = torch.device('cuda:{}'.format(args.gpu))
     # coauthors = [g.to(device) for g in coauthors]
@@ -70,7 +73,10 @@ def main(args):
     sampler = MultiLayerNeighborSampler([15, 10])
     neg_sampler = None #negative_sampler.Uniform(5)
     train_range = list(range(1, train_idx))
+    pos_weight = calc_pos_weight(coauthors, train_range)
     test_range = list(range(train_idx, len(coauthors)))
+
+    # coauthors = rm_no_topic(coauthors)
     train_loader = TemporalEdgeDataLoader(coauthors, train_range, 
         sampler, negative_sampler=neg_sampler, batch_size=1024, shuffle=False,
         drop_last=False, num_workers=0)
@@ -79,7 +85,7 @@ def main(args):
         drop_last=False, num_workers=0)
 
     # criterion = nn.L1Loss(reduce='mean')
-    pos_weight = calc_pos_weight(coauthors, train_range)
+    # pos_weight = calc_pos_weight(coauthors, train_range)
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight.to(device))
     logger.info('Begin training with %d nodes, %d edges.', num_nodes, num_edges)
     for epoch in range(100):
@@ -160,6 +166,7 @@ if __name__ == '__main__':
             help="number of filter weight matrices, default: -1 [use all]")
     parser.add_argument("--n-layers", type=int, default=2,
             help="number of propagation rounds")
+    parser.add_argument("--batch_size", type=int, default=1024)
 
     logger = set_logger()
     set_random_seed(seed=42)

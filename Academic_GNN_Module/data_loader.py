@@ -84,34 +84,27 @@ def process_author_org(authors, cores=24):
         if os.path.exists(save_path):
             return pd.read_csv(save_path)
 
-        # university = json.load(open('world_universities_and_domains.json', 'r'))
-        udf = pd.read_csv(
-            f'{CSRA_PATH}/country-info.csv')  # 384 organizations
+        udf = pd.read_csv(f'{CSRA_PATH}/country-info.csv')  # 384 organizations
         udf.columns = ['org', 'region', 'country_code']
         udf['org'] = udf['org'].apply(lambda s: s.lower())
         udf['country'] = udf['country_code'].apply(lambda s: s.upper())
         udf['nick'] = udf['org'].copy()
         # abbrv
-        abbs = udf[udf['org'].apply(
-            lambda s: 'university' in s)].copy().reset_index(drop=True)
-        abbs['nick'] = abbs['org'].apply(
-            lambda s: s.replace('university', 'univ'))
+        abbs = udf[udf['org'].apply(lambda s: 'university' in s)].copy().reset_index(drop=True)
+        abbs['nick'] = abbs['org'].apply(lambda s: s.replace('university', 'univ'))
         udf = pd.concat([udf, abbs], sort=False).reset_index(drop=True)
 
         ranking = pd.read_csv(f'{CSRA_PATH}/csrankings.csv')
         ranking.columns = ['name', 'org', 'homepage', 'scholarid']
         us_orgs = list(set(ranking['org'].unique()) - set(udf['org']))
-        us_udf = pd.DataFrame(
-            columns=['nick', 'org', 'region', 'country_code'])
+        us_udf = pd.DataFrame(columns=['nick', 'org', 'region', 'country_code'])
         us_udf['nick'] = us_orgs
         us_udf['org'] = us_orgs
         us_udf['region'] = 'North America'
         us_udf['country_code'] = 'us'
         # abbrv
-        abbs = us_udf[us_udf['org'].apply(
-            lambda s: 'university' in s)].copy().reset_index(drop=True)
-        abbs['nick'] = abbs['org'].apply(
-            lambda s: s.replace('university', 'univ'))
+        abbs = us_udf[us_udf['org'].apply(lambda s: 'university' in s)].copy().reset_index(drop=True)
+        abbs['nick'] = abbs['org'].apply(lambda s: s.replace('university', 'univ'))
         us_udf = pd.concat([us_udf, abbs]).reset_index(drop=True)
 
         # concat non-US organizations with US organizations

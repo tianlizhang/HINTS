@@ -36,6 +36,22 @@ def load_data():
     return coauthors
 
 
+def keep_1topic(coauthors):
+    out = []
+    for i in range(len(coauthors)):
+        g = coauthors[i]
+        edge_topic = g.edata['topic']
+        pad = torch.zeros(len(edge_topic), 1)
+        pad_topic = torch.cat([pad, edge_topic], dim=1)
+
+        bi = (pad_topic!=0).int().clone()
+        indx = torch.argmax(bi, dim=1)
+
+        g.edata['label'] = indx.unsqueeze(1)
+        out.append(g)
+    return out
+
+
 def calc_pos_weight(coauthors, train_range):
     total, l = 0, []
     for i in train_range:
@@ -44,6 +60,7 @@ def calc_pos_weight(coauthors, train_range):
         total += len(topic)
         topic_posnum = topic.sum(0)
         l.append(topic_posnum)
+
     l = torch.vstack(l)
     pos_num = l.sum(0)
     pos_weight = (total-pos_num)/pos_num
@@ -52,13 +69,14 @@ def calc_pos_weight(coauthors, train_range):
 
 def main(args):
     coauthors, _ = dgl.load_graphs(f'../save2/coauthors_topic.graph') #load_data()
+    coauthors = keep_1topic(coauthors)
     # print(f'coauthors:{coauthors}')
     device = torch.device('cuda:{}'.format(args.gpu))
     # coauthors = [g.to(device) for g in coauthors]
     # node_features = coauthors[0].edata['feat']
     n_features = 300#node_features.shape[1]
     k = 5
-    model = BatchModel(n_features, 100, 100).to(device)
+    model = BatchModel(n_features, 100, 100, out_dim=1001).to(device)
     opt = torch.optim.Adam(model.parameters())
 
     train_idx = int(len(coauthors) * 0.75)
@@ -80,7 +98,8 @@ def main(args):
 
     # criterion = nn.L1Loss(reduce='mean')
     pos_weight = calc_pos_weight(coauthors, train_range)
-    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight.to(device))
+    # criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight.to(device))
+    criterion = nn.CrossEntropyLoss()
     logger.info('Begin training with %d nodes, %d edges.', num_nodes, num_edges)
     for epoch in range(100):
         loss_avg = 0
@@ -88,6 +107,8 @@ def main(args):
         model.train()
         batch_bar = tqdm(train_loader)
         for step, (input_nodes, pos_graph, history_blocks) in enumerate(batch_bar):
+            # if step>2:
+            #     break
             history_inputs = [nfeat[nodes].to(device) for nfeat, nodes in zip(features, input_nodes)]
             # batch_inputs = nfeats[input_nodes].to(device)
             pos_graph = pos_graph.to(device)
@@ -97,7 +118,7 @@ def main(args):
 
             pos_score = model(history_blocks, history_inputs, pos_graph)
             # loss = compute_loss(pos_score)
-            loss = criterion(pos_score, pos_graph.edata['topic'])
+            loss = criterion(pos_score, pos_graph.edata['label'].squeeze(1))
             opt.zero_grad()
             loss.backward()
             opt.step()
@@ -108,8 +129,6 @@ def main(args):
         y_probs = []
         y_labels = []
         val_loss, total = 0, 0
-
-        ad = 0
 
         model.eval()
         with torch.no_grad():
@@ -122,12 +141,13 @@ def main(args):
                 history_blocks = [[block.int().to(device) for block in blocks] for blocks in history_blocks]
 
                 pos_score = model(history_blocks, history_inputs, pos_graph)
-                label_score = pos_graph.edata['topic']
+                pos_pred = torch.argmax(pos_score, dim=1)
+                label_score = pos_graph.edata['label'].squeeze(1)
                 val_loss += criterion(pos_score, label_score)
                 # pos_score = pos_score.flatten()
                 # label = label_score.flatten()
                 # total += len(pos_score)
-                y_probs.append(pos_score.detach().cpu().numpy())
+                y_probs.append(pos_pred.detach().cpu().numpy())
                 y_labels.append(label_score.cpu().numpy())
                 # y_labels.append(np.ones_like(y_probs[-1]))
                 # y_probs.append(neg_score.detach().cpu().numpy())
@@ -137,12 +157,13 @@ def main(args):
         # y_probs = [y.squeeze(1) for y in y_probs]
         # y_labels = [y.squeeze(1) for y in y_labels]
         # y_prob = np.hstack(y_probs)
-        y_pred = np.vstack(y_probs) > 0.5
-        y_label = np.vstack(y_labels)
+        y_pred = np.hstack(y_probs)# > 0.5
+        y_label = np.hstack(y_labels)
         print(f"y_label:{y_label.shape}, y_pred:{y_pred.shape}")
         # ap = average_precision_score(y_label, y_prob)
         # auc = roc_auc_score(y_label, y_prob)
         f1 = f1_score(y_label, y_pred, average='micro')
+        # f1_mac = f1_score(y_label, y_pred, average='macro')
         f1_mac = f1_score(y_label, y_pred, average='macro')
         print(f"Epoch:{epoch}, train_loss:{loss_avg}, val_loss:{val_loss}, f1:{f1}, f1_mac:{f1_mac}")
         # logger.info('Epoch %03d Training loss: %.4f, Test F1: %.4f, AP: %.4f, AUC: %.4f', epoch, loss_avg, f1, ap, auc)

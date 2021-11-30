@@ -46,11 +46,11 @@ class BatchSAGE(nn.Module):
 
 
 class BatchModel(nn.Module):
-    def __init__(self, in_features, hidden_features, out_features):
+    def __init__(self, in_features, hidden_features, out_features, out_dim=1000):
         super().__init__()
         self.sage = BatchSAGE(in_features, hidden_features, out_features, 2, nn.ReLU(), 0.2)
         self.lstm = nn.LSTM(out_features, out_features, 1)
-        self.pred = DotProductPredictor(in_dim=out_features, out_dim=1000)
+        self.pred = DotProductPredictor(in_dim=out_features, out_dim=out_dim)
         self.out_features = out_features
 
     def forward(self, history_blocks, history_inputs, pos_g):
