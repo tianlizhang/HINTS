@@ -105,9 +105,9 @@ def bulid_graph(path='../save3/graph_vfc.graph'):
     vid_has = np.load('../save2/vid_has.npy')
     year_has = np.load('../save2/year_has.npy')
 
-    idx = np.where([pid2>=0])[0]
-    pid1, pid2 = pid1[idx], pid2[idx]
-    year_cite = year_cite[idx]
+    idx = np.where(pid2>=0)[0]
+    p1, p2 = pid1[idx], pid2[idx]
+    year_cite_new = year_cite[idx]
 
     graph_list, _ = dgl.load_graphs(f'{DBLP_PATH}/dblp.graph')
     graph = graph_list[0]
@@ -131,7 +131,7 @@ def bulid_graph(path='../save3/graph_vfc.graph'):
         ('org', 'has', 'author'): (oid_org, aid_org),
         ('country', 'has', 'org'): (cid_country, oid_country),
         ('topic', 'contains', 'paper'): (tid_topic, pid_topic),
-        ('paper', 'cites', 'paper'): (pid1, pid2),
+        ('paper', 'cites', 'paper'): (p1, p2),
         ('venue', 'publishes', 'paper'): (vid_pub, pid_pub),
         ('field', 'has', 'venue'): (fid_has, vid_has)
     }
@@ -140,7 +140,7 @@ def bulid_graph(path='../save3/graph_vfc.graph'):
         ('paper', 'written', 'author'): year,
         ('org', 'has', 'author'): author_org_year,
         ('topic', 'contains', 'paper'): paper_topic_year, 
-        ('paper', 'cites', 'paper'): torch.from_numpy(year_cite), 
+        ('paper', 'cites', 'paper'): torch.from_numpy(year_cite_new), 
         ('venue', 'publishes', 'paper'): torch.from_numpy(year_pub), 
         ('field', 'has', 'venue'): torch.from_numpy(year_has) 
     }
