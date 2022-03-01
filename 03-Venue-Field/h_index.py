@@ -14,8 +14,8 @@ def calc_h_index(cites):
     return h_index
 
 
-def load():
-    graph_list, _ = dgl.load_graphs('../save3/graph_vfc.graph')
+def load(path='../save3/graph_vfc_new.graph'):
+    graph_list, _ = dgl.load_graphs(path)
     graph = graph_list[0]
 
     author_ids = torch.where(graph.in_degrees(etype='written') >= 50)[0]
@@ -68,7 +68,7 @@ def add(graph):
         source, target = graph.edges(etype = etype)
 
         h_index = torch.zeros(len(nodes))
-        outer = range(len(nodes))
+        outer = trange(len(nodes))
         for i in outer:
             if is_paper_dst==True:
                 idx = torch.where(source==nodes[i])[0]
@@ -91,16 +91,16 @@ def add(graph):
 
 
 if __name__ == '__main__':
-    # graph = load()
+    # graph = load('../save3/graph_vfc_new.graph')
     # graph = add(graph)
-    # dgl.save_graphs('../save3/graph_h_index.graph', [graph])
+    # dgl.save_graphs('../save3/graph_h_index_new.graph', [graph])
 
-    graph = load()
-    g = process(graph, 2000)
+    graph = load('../save3/graph_vfc_new.graph')
+    g = process(graph, 1900)
     out = []
     for year in trange(2000, 2022):
         year_graph = limit_year(g, year)
         print(f'{year:}, {year_graph}')
         new_g = add(year_graph)
         out.append(new_g)
-    dgl.save_graphs('../save3/year_graphs_h_index.graph', out)
+    dgl.save_graphs('../save3/year_graphs_h_index_new.graph', out)

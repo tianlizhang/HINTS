@@ -70,6 +70,8 @@ def analysis(G, i):
     n_cc = nx.number_connected_components(G)
     # e. 社区个数：社区是一组节点，组内的节点连接的边比组之间的多得多。
     communities = nx.community.label_propagation_communities(G)
+    nx.number_weakly_connected_components
+    nx.number_strongly_connected_components
     n_c = len(list(communities))
 
     ## 2. 中心性度量

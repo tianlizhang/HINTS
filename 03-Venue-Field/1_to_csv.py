@@ -194,7 +194,7 @@ def show(path='../save3/graph_vfc.graph'):
 
     def rm_nan(a, b, c):
         id1, id2 = np.where(a>=0)[0], np.where(b>=0)[0]
-        ind = id1 #if len(id1)<len(id2) else id2
+        ind = id1 if len(id1)<len(id2) else id2
         return a[ind].astype(np.int32), b[ind].astype(np.int32), torch.from_numpy(c[ind])
 
     pid1, pid2, year_cite = rm_nan(pid1, pid2, year_cite)

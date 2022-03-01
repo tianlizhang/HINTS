@@ -4,6 +4,21 @@ import torch
 from tqdm import trange
 import numpy as np
 from joblib import Parallel, delayed
+import pandas as pd
+
+df_filtered = pd.read_csv('../save-map/synonym_topic_filtered.csv')
+index1 = df_filtered['index1'].tolist()
+index2 = df_filtered['index2'].tolist()
+
+def filter_topic(ls):
+    for i in trange(len(index1)-1, -1, -1):
+        for j in range(len(ls)):
+            src = ls[j]
+            id1 = torch.where(src==index1[i])[0]
+            if len(id1) > 0:
+                src[id1] = index2[i]
+            ls[j] = src
+    return ls
 
 def load_data():
     graph_list, _ = dgl.load_graphs(f'../save3/graph_vfc.graph')
@@ -16,6 +31,7 @@ def load_data():
     cite_year = g.edges['cites'].data['year']
     contains_year = g.edges['contains'].data['year']
 
+    src_top = filter_topic([src_top])[0]
     g2 = dgl.heterograph({
         ('paper', 'cites', 'paper'): (src_pap1, dst_pap2), 
         ('topic', 'contains', 'paper'): (src_top, dst_pap), 
@@ -67,9 +83,9 @@ def load_data():
         # bar.set_postfix(h=torch.max(h_index))
         
         # if year<2003:
-        dgl.save_graphs(f'../save4/g_topic_{year}.graph', [g_topic])
+        dgl.save_graphs(f'../save4/g_topic_filter_{year}.graph', [g_topic])
     
-    dgl.save_graphs(f'../save4/g_topic.graph', out)
+    dgl.save_graphs(f'../save4/g_topic_filter.graph', out)
 
 
 def get_data():
@@ -83,6 +99,7 @@ def get_data():
     cite_year = g.edges['cites'].data['year']
     contains_year = g.edges['contains'].data['year']
 
+    src_top = filter_topic([src_top])[0]
     g2 = dgl.heterograph({
         ('paper', 'cites', 'paper'): (src_pap1, dst_pap2), 
         ('topic', 'contains', 'paper'): (src_top, dst_pap), 
@@ -122,14 +139,14 @@ def part(g2, year):
         # bar.set_postfix(year=year, h=len(idx))
     
     g_topic.edata['h_index'] = h_index
-    dgl.save_graphs(f'../save4/g_topic_{year}.graph', [g_topic])
+    dgl.save_graphs(f'../save4/g_topic_filter_{year}.graph', [g_topic])
     return g_topic
 
 if __name__ =='__main__':
-    load_data()
+    # load_data()
 
-    # g2 = get_data()
-    # out = Parallel(n_jobs=22,
-    #                verbose=30)(delayed(part)(g2, year)
-    #                            for year in range(2000, 2022))
-    # dgl.save_graphs(f'../save4/g_topic.graph', out)
+    g2 = get_data()
+    out = Parallel(n_jobs=22,
+                   verbose=30)(delayed(part)(g2, year)
+                               for year in range(2000, 2022))
+    dgl.save_graphs(f'../save-map/g_topic_filter.graph', out)
