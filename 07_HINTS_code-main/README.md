@@ -1,13 +1,13 @@
 HINTS
 -----------------
-This is the implementation of our paper "[HINTS: Citation Time Series Prediction for New Publications via Dynamic Heterogeneous Information Network Embedding](http://web.cs.ucla.edu/~yzsun/papers/2021_WWW_HINTS.pdf)", published in WWW'21.
+This is the implementation of the paper "[HINTS: Citation Time Series Prediction for New Publications via Dynamic Heterogeneous Information Network Embedding](http://web.cs.ucla.edu/~yzsun/papers/2021_WWW_HINTS.pdf)", published in WWW'21.
 
 Data
 -----------------
 
 The original data used could be access from [Aminer](https://www.aminer.org/citation)  and [APS](https://journals.aps.org/datasets).
 
-We also provide our [processed data](https://www.dropbox.com/sh/zqj1r4icwophb3a/AAANshyUt-f5yT6w-9ri-WK-a?dl=0) to reproduce the results reported in our paper. 
+We also provide the [processed data](https://www.dropbox.com/sh/zqj1r4icwophb3a/AAANshyUt-f5yT6w-9ri-WK-a?dl=0) to reproduce the results reported in the paper. 
 
 
 
@@ -63,17 +63,6 @@ Calculate MALE and RMSLE
 	* For Aminer dataset: `python error_by_year.py seq2seq aminer`
 	* For APS dataset: `python error_by_year.py seq2seq aps`
 
-Note that the batch size in set as the number of papers used in training, i.e., there is only one interation per epoch. I didn't try "mini-batch"-like training.
-
-
-The prediction files will be stored under the `result` folder.
-
-
-
-
-Contact
-----------------------
-Song Jiang <songjiang@cs.ucla.edu>
 
 
 
